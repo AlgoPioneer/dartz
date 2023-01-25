@@ -32,8 +32,8 @@ void main() {
         await one.both(two).map((t) => t.value1 + t.value2).timed.run();
 
     expect(result.value2, 3);
-    expect(result.value1 >= Duration(seconds: 1), true);
-    expect(result.value1 < Duration(milliseconds: 1100), true);
+    expect(result.value1, greaterThanOrEqualTo(Duration(seconds: 1)));
+    expect(result.value1, lessThan(Duration(milliseconds: 1900)));
   });
 
   test("Task.both will fail on first error", () async {
@@ -338,5 +338,71 @@ void main() {
 
     expect(resultS, some(24));
     expect(resultN, none());
+  });
+
+  test("Task.tupledN", () async {
+    Task<int> t(int i) => Task.delay(() => i);
+
+    final result = await Task.tupled3(t(0), t(1), t(2)).run();
+
+    expect(result, tuple3(0, 1, 2));
+  });
+
+  test("Task.mapN", () async {
+    Task<int> t(int i) => Task.delay(() => i);
+
+    final sum =
+        await Task.map3(t(0), t(1), t(2), (int a, int b, int c) => a + b + c)
+            .run();
+
+    expect(sum, 3);
+  });
+
+  test("Task.tupledN is serial", () async {
+    Task<int> t(int i) =>
+        Task.delay(() => i).delayBy(const Duration(milliseconds: 500));
+
+    final result = await Task.tupled3(t(0), t(1), t(2)).timed.run();
+    final elapsed = result.value1;
+
+    expect(elapsed >= const Duration(milliseconds: 1500), true);
+  });
+
+  test("Task.parTupledN is concurrent", () async {
+    Task<int> t(int i) =>
+        Task.delay(() => i).delayBy(const Duration(milliseconds: 500));
+
+    final result = await Task.parTupled3(t(0), t(1), t(2)).timed.run();
+    final elapsed = result.value1;
+
+    expect(elapsed <= const Duration(milliseconds: 600), true);
+  });
+
+  test("Task.mapN is serial", () async {
+    Task<int> t(int i) =>
+        Task.delay(() => i).delayBy(const Duration(milliseconds: 500));
+
+    final result =
+        await Task.map3(t(0), t(1), t(2), (int a, int b, int c) => a + b + c)
+            .timed
+            .run();
+
+    final elapsed = result.value1;
+
+    expect(elapsed >= const Duration(milliseconds: 1500), true);
+  });
+
+  test("Task.parMapN is concurrent", () async {
+    Task<int> t(int i) =>
+        Task.delay(() => i).delayBy(const Duration(milliseconds: 500));
+
+    final result =
+        await Task.parMap3(t(0), t(1), t(2), (int a, int b, int c) => a + b + c)
+            .timed
+            .run();
+
+    final elapsed = result.value1;
+
+    expect(elapsed <= const Duration(seconds: 600), true);
   });
 }
